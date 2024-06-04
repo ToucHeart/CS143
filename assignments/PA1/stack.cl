@@ -41,7 +41,7 @@ class DCommand {
 class ECommand {
    a : String;
    b : String;
-   plus : A2I <- new A2I;
+   conversion : A2I <- new A2I;
 
    operate(s : Stack) : Stack {
       if s.isEmpty()  -- first check isEmpty?
@@ -57,7 +57,7 @@ class ECommand {
          s <- s.tail(); -- pop a
          b <- s.head(); -- get b
          s <- s.tail(); -- pop b 
-         s <- s.push(plus.i2a(plus.a2i(a) + plus.a2i(b))); -- push a+b
+         s <- s.push(conversion.i2a(conversion.a2i(a) + conversion.a2i(b))); -- push a+b
       }
       else if s.head() = "s"
       then
@@ -94,15 +94,15 @@ class Main inherits IO {
             {
                out_string(">");
                input <-in_string();
-               if input="x" 
+               if input = "x" 
                then
                   flag <- false
                else
                {
-                  if input="d"
+                  if input = "d"
                   then
                      dcom.display(stack)
-                  else if input="e"
+                  else if input = "e"
                   then 
                      stack <- ecom.operate(stack)
                   else 
