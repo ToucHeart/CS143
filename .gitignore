@@ -1,3 +1,4 @@
 *.s
 *.pdf
 .vscode/*
+assignments/*/grading/*
