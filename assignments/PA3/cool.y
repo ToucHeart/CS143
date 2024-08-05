@@ -10,7 +10,7 @@
   #include "utilities.h"
   
   extern char *curr_filename;
-  
+
   
   /* Locations */
   #define YYLTYPE int              /* the type of locations */
@@ -141,10 +141,26 @@
     %type <features> feature_list
     %type <feature> feature
     
-    %type <exporession> expr
-    
+    %type <expression> expr
+    %type <expression> let_body
+    %type <expression> let_
+    %type <expressions> block_exprs
+    %type <expressions> arguement_exprs
+
+    %type <case_> case_branch
+    %type <cases> case_branches
+
     /* Precedence declarations go here. */
-    
+    %nonassoc LET_BODY
+    %right ASSIGN
+    %right NOT
+    %nonassoc LE '<' '='
+    %left '+' '-'
+    %left '*' '/'
+    %right ISVOID
+    %right '~'
+    %left  '@'
+    %left  '.'  
     
     %%
     /* 
@@ -168,6 +184,8 @@
     stringtable.add_string(curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+    | error ';'
+    { $$ = nullptr;}
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -180,13 +198,15 @@
 
     feature:
       OBJECTID ':' TYPEID ';'
-        { $$ = attr($1,$3,nullptr); }
+        { $$ = attr($1,$3,no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr ';'
         { $$ = attr($1,$3,$5); }
     | OBJECTID '(' ')' ':' TYPEID '{' expr '}' ';'
-        { $$ = method($1,nullptr,$5,$7); }
+        { $$ = method($1,nil_Formals(),$5,$7); }
     | OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';'
-        { $$ = method($1,$3,$6,$8); }
+        { $$ = method($1,$3,$6,$8);}
+    | error ';'
+        { $$ = nullptr;}
     ;
 
     formal_list:
@@ -201,13 +221,84 @@
         { $$ = formal($1,$3); }
     ;
     
+    block_exprs:
+      expr ';'
+        {$$ = single_Expressions($1);}
+    | block_exprs expr ';'
+        {$$ = append_Expressions($1,single_Expressions($2));}
+    | block_exprs error ';'
+        { $$ = $1;}
+    ;
+
+    arguement_exprs:
+      expr 
+        { $$ = single_Expressions($1);}
+    | arguement_exprs ',' expr
+        { $$ = append_Expressions($1,single_Expressions($3));}
+    | arguement_exprs ',' error
+        { $$ = $1;}
+    ;
+
+    case_branches:
+      case_branch
+        { $$ = single_Cases($1);}
+    | case_branches case_branch
+        { $$ = append_Cases($1,single_Cases($2));}
+    ;
+
+    case_branch:
+      OBJECTID ':' TYPEID DARROW expr ';'
+        { $$ = branch($1,$3,$5);}
+    ;
+
+    let_body:
+      expr %prec LET_BODY
+        { $$ = $1;}
+    ;
+
+    let_:
+      OBJECTID ':' TYPEID IN let_body
+        { $$ = let($1,$3,no_expr(),$5);}           
+    | OBJECTID ':' TYPEID ASSIGN expr IN let_body
+        { $$ = let($1,$3,$5,$7);}           
+    | OBJECTID ':' TYPEID ',' let_  
+        { $$ = let($1,$3,no_expr(),$5);}         
+    | OBJECTID ':' TYPEID ASSIGN expr ',' let_
+        { $$ = let($1,$3,$5,$7);}     
+    | OBJECTID ':' TYPEID ASSIGN error IN let_body
+        { $$ = nullptr;}           
+    ;
+
     expr:
       OBJECTID ASSIGN expr
         { $$ = assign($1,$3); }
+    | OBJECTID '(' ')'
+        { $$ = dispatch(object(idtable.add_string("self")),$1,nil_Expressions());}
+    | OBJECTID '(' arguement_exprs ')'
+        { $$ = dispatch(object(idtable.add_string("self")),$1,$3);}    
+    | expr '.' OBJECTID '(' arguement_exprs ')'
+        { $$ = dispatch($1,$3,$5);}
+    | expr '.' OBJECTID '(' ')'
+        { $$ = dispatch($1,$3,nil_Expressions());}       
+    | expr '@' TYPEID '.' OBJECTID '(' arguement_exprs ')'
+        { $$ = static_dispatch($1,$3,$5,$7);}
+    | expr '@' TYPEID '.' OBJECTID '(' ')'
+        { $$ = static_dispatch($1,$3,$5,nil_Expressions());}
     | IF expr THEN expr ELSE expr FI
         { $$ = cond($2,$4,$6); }
     | WHILE expr LOOP expr POOL
         { $$ = loop($2,$4); }
+
+    | '{' block_exprs '}'
+        { $$ = block($2);}
+    | LET let_ 
+        { $$ = $2;}
+    | CASE expr OF case_branches ESAC
+        { $$ = typcase($2,$4);}
+    | NEW TYPEID
+        { $$ = new_($2);}
+    | ISVOID expr
+        { $$ = isvoid($2); }
     | expr '+' expr
         { $$ = plus($1,$3); }
     | expr '-' expr
@@ -220,14 +311,22 @@
         { $$ = neg($2); }
     | expr '<' expr
         { $$ = lt($1,$3); }
-    | expr '<=' expr
+    | expr LE expr
         { $$ = leq($1,$3); }
     | expr '=' expr
         { $$ = eq($1,$3); }
-    | ISVOID expr
-        { $$ = isvoid($2); }
-    | true
-        { $$ = bool_const(true); }
+    | NOT expr
+        { $$ = comp($2);}   
+    |'(' expr ')'
+        { $$ = $2;}
+    | OBJECTID
+        { $$ = object($1);}    
+    | INT_CONST
+        { $$ = int_const($1);} 
+    | STR_CONST
+        { $$ = string_const($1);}
+    | BOOL_CONST
+        { $$ = bool_const($1);}
     ;
     /* end of grammar */
     %%

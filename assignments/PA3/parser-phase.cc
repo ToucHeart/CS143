@@ -32,8 +32,9 @@ extern int omerrs;             // a count of lex and parse errors
 
 extern int cool_yyparse();
 void handle_flags(int argc, char *argv[]);
-
+extern int cool_yydebug;
 int main(int argc, char *argv[]) {
+    cool_yydebug=1;
     handle_flags(argc, argv);
     cool_yyparse();
     if (omerrs != 0) {
