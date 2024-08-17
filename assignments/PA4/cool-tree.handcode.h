@@ -26,6 +26,10 @@ class Class__class;
 typedef Class__class *Class_;
 class Feature_class;
 typedef Feature_class *Feature;
+class method_class;
+typedef method_class *method_p;
+class attr_class;
+typedef attr_class *attr_p;
 class Formal_class;
 typedef Formal_class *Formal;
 class Expression_class;
@@ -100,6 +104,8 @@ void dump_type(ostream&, int);               \
 Expression_class() { type = (Symbol) NULL; }
 
 #define Expression_SHARED_EXTRAS           \
-void dump_with_types(ostream&,int); 
+void dump_with_types(ostream&,int);		   \
+Symbol type_check(Env env);
+
 
 #endif

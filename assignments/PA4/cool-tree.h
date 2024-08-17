@@ -11,7 +11,20 @@
 
 #include "tree.h"
 #include "cool-tree.handcode.h"
+#include "symtab.h"
 
+class ClassTable;
+
+class Env {
+public:
+  SymbolTable<Symbol, Symbol> *vars;
+
+  Class_ cur_class;
+
+  ClassTable *ct;
+
+  Env(ClassTable*c=nullptr) : vars(new SymbolTable<Symbol, Symbol>), cur_class(nullptr), ct(c) {}
+};
 
 // define the class for phylum
 // define simple phylum - Program
@@ -35,7 +48,14 @@ class Class__class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
-
+   virtual Symbol get_name() = 0;
+   virtual Symbol get_parent()=0;
+   virtual Features get_features()=0;
+   virtual void type_check(Env env) = 0;
+   virtual void init_env(Env) = 0;
+   virtual void add2env(Env) = 0;
+   virtual method_p get_method(Symbol,Env) = 0;
+   virtual void check_inherit_method(Env env, method_p m) = 0;
 #ifdef Class__EXTRAS
    Class__EXTRAS
 #endif
@@ -49,6 +69,10 @@ class Feature_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+   virtual void add2env(Env) = 0;
+   virtual Symbol type_check(Env) = 0;
+   virtual method_p get_method(Symbol name) = 0;
+   virtual void check_inherit_method(Env env, method_p m) = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -63,7 +87,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
-
+   virtual void add2env(Env env) = 0;
+   virtual Symbol get_type() = 0;
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
 #endif
@@ -77,7 +102,7 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
-
+   virtual Symbol type_check(Env env) = 0;
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
 #endif
@@ -159,14 +184,21 @@ public:
       features = a3;
       filename = a4;
    }
+   Symbol get_name() { return name; }
+   Symbol get_parent() { return parent; }
+   Features get_features() { return features; }
    Class_ copy_Class_();
    void dump(ostream& stream, int n);
-
+   void type_check(Env env);
+   void init_env(Env);
+   void add2env(Env);
+   method_p get_method(Symbol name,Env env);
+   void check_inherit_method(Env env, method_p m);
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
 #endif
 #ifdef class__EXTRAS
-   class__EXTRAS
+       class__EXTRAS
 #endif
 };
 
@@ -187,6 +219,13 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+   Symbol get_name() { return name; }
+   Formals get_formals() { return formals; }
+   Symbol get_ret_type() { return return_type; };
+   void add2env(Env env);
+   Symbol type_check(Env env) override;
+   method_p get_method(Symbol name);
+   void check_inherit_method(Env env, method_p m);
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -211,6 +250,12 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+   Symbol get_name() { return name; }
+   Symbol get_type() { return type_decl; }
+   void add2env(Env env);
+   Symbol type_check(Env env) override;
+   method_class* get_method(Symbol name);
+   void check_inherit_method(Env env, method_p m);
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
@@ -233,7 +278,8 @@ public:
    }
    Formal copy_Formal();
    void dump(ostream& stream, int n);
-
+   void add2env(Env env);
+   Symbol get_type();
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS
 #endif
