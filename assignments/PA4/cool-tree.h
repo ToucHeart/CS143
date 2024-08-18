@@ -12,6 +12,7 @@
 #include "tree.h"
 #include "cool-tree.handcode.h"
 #include "symtab.h"
+#include <unordered_set>
 
 class ClassTable;
 
@@ -116,6 +117,8 @@ class Case_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Case(); }
    virtual Case copy_Case() = 0;
+   virtual Symbol type_check(Env env) = 0;
+   virtual void add2env(Env env,std::unordered_set<Symbol>&type_set) = 0;
 
 #ifdef Case_EXTRAS
    Case_EXTRAS
@@ -303,7 +306,8 @@ public:
    }
    Case copy_Case();
    void dump(ostream& stream, int n);
-
+   Symbol type_check(Env env);
+   void add2env(Env env,std::unordered_set<Symbol>&type_set);
 #ifdef Case_SHARED_EXTRAS
    Case_SHARED_EXTRAS
 #endif

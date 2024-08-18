@@ -1,12 +1,12 @@
 #ifndef SEMANT_H_
 #define SEMANT_H_
 
-#include <assert.h>
-#include <iostream>  
 #include "cool-tree.h"
+#include "list.h"
 #include "stringtab.h"
 #include "symtab.h"
-#include "list.h"
+#include <assert.h>
+#include <iostream>
 #include <unordered_map>
 
 #define TRUE 1
@@ -23,27 +23,26 @@ typedef ClassTable *ClassTableP;
 class ClassTable {
 private:
   int semant_errors;
-  ostream& error_stream;
+  ostream &error_stream;
   std::unordered_map<Symbol, Class_> class_defs;
   std::unordered_map<Symbol, Symbol> class_parent;
   std::unordered_map<Class_, Symbol> class_names;
   void install_basic_classes();
   void add2classmap(Class_ c);
-  void visit(Symbol s,std::unordered_map<Symbol, int> &colors);
+  void visit(Symbol s, std::unordered_map<Symbol, int> &colors);
 
 public:
   ClassTable(Classes);
   int errors() { return semant_errors; }
-  ostream& semant_error();
-  ostream& semant_error(Class_ c,tree_node*t);
-  ostream& semant_error(Symbol filename, tree_node *t);
+  ostream &semant_error();
+  ostream &semant_error(Class_ c, tree_node *t);
+  ostream &semant_error(Symbol filename, tree_node *t);
   void check_valid();
   Class_ get_class(Symbol s);
-  bool conform(Symbol a, Symbol b,Class_ c);
+  bool conform(Symbol a, Symbol b, Class_ c);
   bool exist_class(Symbol s);
   Symbol get_class_name(Class_);
-  Symbol join_class(Symbol type_a, Symbol type_b);
+  Symbol join_class(Symbol type_a, Symbol type_b, Class_ c = nullptr);
 };
 
 #endif
-

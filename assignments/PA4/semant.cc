@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unordered_set>
 
 extern int semant_debug;
 extern char *curr_filename;
@@ -141,7 +142,10 @@ Symbol method_class::type_check(Env env) {
 
   Symbol expr_type = this->expr->type_check(env);
   Symbol ret_type = nullptr;
-  if (env.ct->conform(expr_type, return_type, env.cur_class)) {
+  if (return_type == SELF_TYPE && expr_type != return_type) {
+    env.ct->semant_error(env.cur_class, this)
+        << "True return type should be SELF_TYPE!" << endl;
+  } else if (env.ct->conform(expr_type, return_type, env.cur_class)) {
     ret_type = expr_type;
   } else {
     env.ct->semant_error(env.cur_class, this)
@@ -196,8 +200,46 @@ Symbol assign_class::type_check(Env env) {
   return this->type;
 }
 
+Symbol branch_class::type_check(Env env) { return this->expr->type_check(env); }
+
+void branch_class::add2env(Env env, std::unordered_set<Symbol> &type_set) {
+  if (name == self) {
+    env.ct->semant_error(env.cur_class, this)
+        << "attribute can't be self" << endl;
+  } else {
+    if (type_set.find(this->type_decl) != type_set.end()) {
+      env.ct->semant_error(env.cur_class, this)
+          << " variables of the same type are not allowed " << endl;
+    } else {
+      env.vars->addid(name, &type_decl);
+      type_set.insert(type_decl);
+    }
+  }
+}
+
 // for case epxression
-Symbol typcase_class::type_check(Env env) {}
+Symbol typcase_class::type_check(Env env) {
+  this->expr->type_check(env);
+  env.vars->enterscope();
+  std::unordered_set<Symbol> type_set;
+  for (int i = this->cases->first(); this->cases->more(i);
+       i = this->cases->next(i)) {
+    this->cases->nth(i)->add2env(env, type_set);
+  }
+  Symbol ret_type = nullptr, tmp_type = nullptr;
+  for (int i = this->cases->first(); this->cases->more(i);
+       i = this->cases->next(i)) {
+    tmp_type = this->cases->nth(i)->type_check(env);
+    if (ret_type == nullptr) {
+      ret_type = tmp_type;
+    } else {
+      ret_type = env.ct->join_class(ret_type, tmp_type, env.cur_class);
+    }
+  }
+  this->type = ret_type;
+  env.vars->exitscope();
+  return this->type;
+}
 
 // loop always return type Object
 Symbol loop_class::type_check(Env env) {
@@ -313,7 +355,6 @@ Symbol isvoid_class::type_check(Env env) {
 Symbol new__class::type_check(Env env) {
   if (this->type_name == SELF_TYPE) {
     this->type = type_name;
-    return env.cur_class->get_name();
   } else {
     if (env.ct->exist_class(type_name)) {
       this->type = type_name;
@@ -354,7 +395,7 @@ Symbol cond_class::type_check(Env env) {
   }
   Symbol a = then_exp->type_check(env);
   Symbol b = else_exp->type_check(env);
-  this->type = env.ct->join_class(a, b);
+  this->type = env.ct->join_class(a, b, env.cur_class);
   return this->type;
 }
 
@@ -583,7 +624,13 @@ Symbol ClassTable::get_class_name(Class_ c) {
 }
 
 // get LCA of two classes in the class graph
-Symbol ClassTable::join_class(Symbol type_a, Symbol type_b) {
+Symbol ClassTable::join_class(Symbol type_a, Symbol type_b, Class_ c) {
+  if (type_a == SELF_TYPE) {
+    type_a = c->get_name();
+  }
+  if (type_b == SELF_TYPE) {
+    type_b = c->get_name();
+  }
   int depth_a = 0, depth_b = 0;
   Symbol a = type_a, b = type_b;
   while (a != Object) {
@@ -608,6 +655,9 @@ Symbol ClassTable::join_class(Symbol type_a, Symbol type_b) {
   while (class_parent[longer] != class_parent[shorter]) {
     longer = class_parent[longer];
     shorter = class_parent[shorter];
+  }
+  if (longer == shorter) {
+    return longer;
   }
   return class_parent[longer];
 }
