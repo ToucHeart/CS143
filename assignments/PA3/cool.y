@@ -1,6 +1,7 @@
 /*
 *  cool.y
-*              Parser definition for the COOL language.
+*  Parser definition for the COOL language.
+*  passed all tests!
 *
 */
 %{
