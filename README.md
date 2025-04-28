@@ -14,13 +14,4 @@ TODO: last lab
 
 References: 
 
-
-[video](https://www.bilibili.com/video/BV17K4y147Bz/?p=1)
-
-
-
-[course site	](http://web.stanford.edu/class/cs143/)
-
-
-
 [环境配置](https://blog.csdn.net/weixin_53369402/article/details/126685257)
